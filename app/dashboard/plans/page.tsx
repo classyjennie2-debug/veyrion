@@ -6,7 +6,8 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { investmentPlans } from "@/lib/mock-data"
+import { getInvestmentPlansFromDb } from "@/lib/db"
+import { safeNumber, formatCurrency, getPlanAnnualRate } from "@/lib/investment-utils"
 import { Shield, TrendingUp, AlertTriangle, Clock, DollarSign } from "lucide-react"
 
 const riskConfig = {
@@ -30,7 +31,9 @@ const riskConfig = {
   },
 }
 
-export default function PlansPage() {
+export default async function PlansPage() {
+  const plans = await getInvestmentPlansFromDb()
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -44,9 +47,17 @@ export default function PlansPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {investmentPlans.map((plan) => {
-          const risk = riskConfig[plan.risk]
+        {plans.map((plan) => {
+          // Safe value extraction
+          const minAmount = safeNumber(plan.minAmount, 0)
+          const maxAmount = safeNumber(plan.maxAmount, Infinity)
+          // Get the annual return rate based on plan type
+          const annualReturnRate = getPlanAnnualRate(plan.planType || "Conservative Bond Fund")
+          const duration = safeNumber(plan.duration, 0)
+          const durationUnit = plan.durationUnit || "months"
+          const risk = riskConfig[plan.risk as keyof typeof riskConfig] || riskConfig.Medium
           const RiskIcon = risk.icon
+          
           return (
             <Card
               key={plan.id}
@@ -62,29 +73,29 @@ export default function PlansPage() {
                     </div>
                     <div>
                       <CardTitle className="text-base text-card-foreground">
-                        {plan.name}
+                        {plan.name || "Investment Plan"}
                       </CardTitle>
                       <Badge
                         variant="outline"
                         className={`mt-1 text-[10px] ${risk.badge}`}
                       >
-                        {plan.risk} Risk
+                        {plan.risk || "Medium"} Risk
                       </Badge>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-accent">
-                      {plan.returnRate}%
+                      {annualReturnRate.toFixed(1)}%
                     </p>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                      Returns
+                      Annual Return
                     </p>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="flex flex-1 flex-col">
                 <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
-                  {plan.description}
+                  {plan.description || "Diversified investment opportunity"}
                 </p>
                 <div className="mt-auto grid grid-cols-3 gap-4 border-t border-border pt-4">
                   <div className="flex items-center gap-2">
@@ -92,7 +103,7 @@ export default function PlansPage() {
                     <div>
                       <p className="text-[10px] text-muted-foreground">Min</p>
                       <p className="text-xs font-semibold text-card-foreground">
-                        ${plan.minAmount.toLocaleString()}
+                        {minAmount > 0 ? `$${minAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "N/A"}
                       </p>
                     </div>
                   </div>
@@ -101,7 +112,7 @@ export default function PlansPage() {
                     <div>
                       <p className="text-[10px] text-muted-foreground">Max</p>
                       <p className="text-xs font-semibold text-card-foreground">
-                        ${plan.maxAmount.toLocaleString()}
+                        {maxAmount !== Infinity ? `$${maxAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "Unlimited"}
                       </p>
                     </div>
                   </div>
@@ -112,7 +123,7 @@ export default function PlansPage() {
                         Duration
                       </p>
                       <p className="text-xs font-semibold text-card-foreground">
-                        {plan.duration}
+                        {duration > 0 ? `${duration} ${durationUnit}` : "Flexible"}
                       </p>
                     </div>
                   </div>

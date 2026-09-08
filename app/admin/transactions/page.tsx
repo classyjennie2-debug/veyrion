@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Card,
   CardContent,
@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { transactions as initialTransactions, allUsers, type Transaction } from "@/lib/mock-data"
+import type { Transaction, User } from "@/lib/types"
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -38,8 +38,39 @@ const typeColors = {
 type StatusFilter = "all" | "pending" | "approved" | "rejected"
 
 export default function AdminTransactionsPage() {
-  const [txList, setTxList] = useState<Transaction[]>([...initialTransactions])
+  const [txList, setTxList] = useState<Transaction[]>([])
+  const [users, setUsers] = useState<User[]>([])
   const [filter, setFilter] = useState<StatusFilter>("all")
+  const [loading, setLoading] = useState(true)
+  const [processingId, setProcessingId] = useState<string | null>(null)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
+
+  const fetchData = async () => {
+    try {
+      const [txRes, usersRes] = await Promise.all([
+        fetch("/api/admin/transactions"),
+        fetch("/api/admin/users")
+      ])
+      
+      if (txRes.ok) {
+        const txData = await txRes.json()
+        setTxList(txData)
+      }
+      
+      if (usersRes.ok) {
+        const usersData = await usersRes.json()
+        setUsers(usersData)
+      }
+    } catch (error) {
+      console.error("Failed to fetch data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [refreshTrigger])
 
   const filtered =
     filter === "all" ? txList : txList.filter((t) => t.status === filter)
@@ -48,17 +79,115 @@ export default function AdminTransactionsPage() {
   const approvedCount = txList.filter((t) => t.status === "approved").length
   const rejectedCount = txList.filter((t) => t.status === "rejected").length
 
-  const handleApprove = (txId: string) => {
-    setTxList((prev) =>
-      prev.map((t) => (t.id === txId ? { ...t, status: "approved" as const } : t))
-    )
+  const handleApprove = async (txId: string) => {
+    setProcessingId(txId)
+    try {
+      // Find the transaction and user being approved
+      const tx = txList.find(t => t.id === txId)
+      const user = tx ? users.find((u: User) => u.id === tx.userId) : null
+      
+      const res = await fetch("/api/admin/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transactionId: txId, approved: true }),
+      })
+      
+      let data
+      try {
+        data = await res.json()
+      } catch (parseError) {
+        console.error("Failed to parse response as JSON:", parseError)
+        const text = await res.text()
+        console.error("Raw response:", text)
+        alert(`Error: Invalid server response (${res.status})`)
+        setProcessingId(null)
+        return
+      }
+      
+      if (res.ok) {
+        const userName = user?.name || "User"
+        let message = ""
+        
+        if (tx?.type === "deposit" && data.transaction?.userBalance !== undefined) {
+          message = `✅ Deposit Approved!\n\nUser: ${userName}\nAmount: $${tx.amount.toLocaleString()}\nNew Balance: $${data.transaction.userBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+        } else if (tx?.type === "deposit") {
+          message = `✅ Deposit of $${tx.amount.toLocaleString()} from ${userName} approved! Balance updated.`
+        } else {
+          message = `✅ ${tx?.type || 'Transaction'} of $${tx?.amount.toLocaleString()} approved!`
+        }
+        
+        alert(message)
+        // Refetch all data to get updated balances
+        setRefreshTrigger(prev => prev + 1)
+      } else {
+        // Extract error message from nested error object
+        let errorMsg = "Unknown error"
+        if (data?.error?.message) {
+          errorMsg = data.error.message
+        } else if (data?.error) {
+          errorMsg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error)
+        } else if (data?.message) {
+          errorMsg = data.message
+        } else {
+          errorMsg = JSON.stringify(data)
+        }
+        alert(`Failed to approve (${res.status}): ${errorMsg}`)
+      }
+    } catch (error) {
+      alert(`Error: ${error instanceof Error ? error.message : 'Network error'}`)
+    } finally {
+      setProcessingId(null)
+    }
   }
 
-  const handleReject = (txId: string) => {
-    setTxList((prev) =>
-      prev.map((t) => (t.id === txId ? { ...t, status: "rejected" as const } : t))
-    )
+  const handleReject = async (txId: string) => {
+    setProcessingId(txId)
+    try {
+      const res = await fetch("/api/admin/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transactionId: txId, approved: false }),
+      })
+      
+      let data
+      try {
+        data = await res.json()
+      } catch (parseError) {
+        console.error("Failed to parse response as JSON:", parseError)
+        const text = await res.text()
+        console.error("Raw response:", text)
+        alert(`Error: Invalid server response (${res.status})`)
+        setProcessingId(null)
+        return
+      }
+      
+      if (res.ok) {
+        console.log("✅ Transaction rejected successfully:", data)
+        alert("Transaction rejected successfully!")
+        // Refetch all data to update the list
+        setRefreshTrigger(prev => prev + 1)
+      } else {
+        // Extract error message from nested error object
+        let errorMsg = "Unknown error"
+        if (data?.error?.message) {
+          errorMsg = data.error.message
+        } else if (data?.error) {
+          errorMsg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error)
+        } else if (data?.message) {
+          errorMsg = data.message
+        } else {
+          errorMsg = JSON.stringify(data)
+        }
+        alert(`Failed to reject (${res.status}): ${errorMsg}`)
+      }
+    } catch (error) {
+      alert(`Error: ${error instanceof Error ? error.message : 'Network error'}`)
+    } finally {
+      setProcessingId(null)
+    }
   }
+
+  if (loading) return <div>Loading transactions...</div>
 
   return (
     <div className="flex flex-col gap-6">
@@ -67,9 +196,27 @@ export default function AdminTransactionsPage() {
           Transaction Management
         </h1>
         <p className="text-sm text-muted-foreground">
-          Review, approve, or reject user transactions.
+          Review, approve, or reject user transactions. Deposits will automatically add funds to user accounts.
         </p>
       </div>
+
+      {/* Recommendations Card */}
+      <Card className="border-accent/20 bg-accent/5">
+        <CardHeader>
+          <CardTitle className="text-base text-foreground flex items-center gap-2">
+            <span className="text-lg">💡</span> Admin Tips
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li>• <strong>Deposit approvals</strong> automatically add funds to user balance</li>
+            <li>• <strong>Withdrawal requests</strong> must be manually processed</li>
+            <li>• <strong>User notifications</strong> are sent when transactions are approved/rejected</li>
+            <li>• Always verify transaction details and user identity before approving</li>
+            <li>• Use the filters above to focus on pending transactions that need action</li>
+          </ul>
+        </CardContent>
+      </Card>
 
       {/* Status summary */}
       <div className="grid gap-4 sm:grid-cols-3">
@@ -151,9 +298,9 @@ export default function AdminTransactionsPage() {
               </p>
             ) : (
               filtered.map((tx) => {
-                const Icon = typeIcons[tx.type]
-                const color = typeColors[tx.type]
-                const user = allUsers.find((u) => u.id === tx.userId)
+                const Icon = typeIcons[tx.type as keyof typeof typeIcons]
+                const color = typeColors[tx.type as keyof typeof typeColors]
+                const user = users.find((u: User) => u.id === tx.userId)
                 const isPositive =
                   tx.type === "deposit" || tx.type === "return"
 
@@ -167,14 +314,44 @@ export default function AdminTransactionsPage() {
                         <Icon className={`h-4 w-4 ${color}`} />
                       </div>
                       <div className="flex-1 overflow-hidden">
-                        <p className="truncate text-sm font-medium text-card-foreground">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="truncate text-sm font-semibold text-card-foreground">
+                            {user?.name || "Unknown User"}
+                          </p>
+                          {tx.type === "deposit" && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-accent/10 text-accent border-accent/30">
+                              DEPOSIT
+                            </Badge>
+                          )}
+                          {tx.type === "withdrawal" && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-destructive/10 text-destructive border-destructive/30">
+                              WITHDRAWAL
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="truncate text-sm text-muted-foreground mb-1">
                           {tx.description}
                         </p>
+                        
+                        {/* Show withdrawal details if applicable */}
+                        {tx.type === "withdrawal" && (tx.withdrawalFee || tx.method) && (
+                          <div className="flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground mt-1 mb-1">
+                            {tx.method && <span className="capitalize">Method: {tx.method}</span>}
+                            {tx.withdrawalFee && <span className="text-destructive/80">Fee: ${tx.withdrawalFee.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>}
+                            {tx.coin && <span>Coin: {tx.coin}</span>}
+                            {tx.coinAmount && <span>Crypto: {tx.coinAmount.toFixed(8)} {tx.coin}</span>}
+                          </div>
+                        )}
+                        
                         <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                          <span>{user?.name ?? "Unknown"}</span>
-                          <span>{"/"}</span>
+                          {user?.email && (
+                            <>
+                              <span>{user.email}</span>
+                              <span>/</span>
+                            </>
+                          )}
                           <span>{tx.date}</span>
-                          <span>{"/"}</span>
+                          <span>/</span>
                           <span className="capitalize">{tx.type}</span>
                         </div>
                       </div>
@@ -207,20 +384,23 @@ export default function AdminTransactionsPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-8 border-accent/30 text-accent hover:bg-accent hover:text-accent-foreground"
+                            className="h-8 border-accent/30 text-accent hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
                             onClick={() => handleApprove(tx.id)}
+                            disabled={processingId === tx.id}
+                            title={tx.type === "deposit" ? `Approve $${tx.amount.toLocaleString()} for ${user?.name || "user"}` : "Approve transaction"}
                           >
                             <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                            Approve
+                            {processingId === tx.id ? "..." : "Approve"}
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-8 border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                            className="h-8 border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50"
                             onClick={() => handleReject(tx.id)}
+                            disabled={processingId === tx.id}
                           >
                             <XCircle className="mr-1 h-3.5 w-3.5" />
-                            Reject
+                            {processingId === tx.id ? "..." : "Reject"}
                           </Button>
                         </div>
                       )}

@@ -1,39 +1,65 @@
 import type { Metadata, Viewport } from "next"
-import { Inter, DM_Sans } from "next/font/google"
+import React from "react"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-})
-
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-dm-sans",
-})
+// Note: Google Fonts imports removed to prevent build errors during network issues
+// Fallback fonts defined in globals.css
 
 export const metadata: Metadata = {
-  title: "Veyrion Capital - Modern Investment Platform",
+  title: "Veyrion Capital - Institutional Investment Management",
   description:
-    "Grow your wealth with institutional-grade investment strategies. Secure, transparent, and designed for modern investors.",
-  generator: "v0.app",
+    "Secure. Transparent. Profitable. Access institutional-grade investment portfolios with advanced analytics and AI-powered strategies.",
+  keywords: ["investment", "wealth management", "portfolio", "financial planning", "retirement", "stocks", "bonds", "crypto"],
+  authors: [{ name: "Veyrion Capital" }],
+  creator: "Veyrion Capital",
+  publisher: "Veyrion Capital",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://veyrioncapital.bond'),
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    title: "Veyrion Capital - Institutional Investment Management",
+    description: "Secure. Transparent. Profitable. Access institutional-grade investment portfolios.",
+    url: "https://veyrioncapital.bond",
+    siteName: "Veyrion Capital",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Veyrion Capital - Institutional Investment Management",
+    description: "Secure. Transparent. Profitable. Access institutional-grade investment portfolios.",
+    creator: "@veyrioncapital",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   icons: {
     icon: [
       {
-        url: "/icon-light-32x32.png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/icon-dark-32x32.png",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.svg",
+        url: "/veyrion-logo-email.svg",
         type: "image/svg+xml",
       },
+      {
+        url: "/placeholder-logo.png",
+        type: "image/png",
+      },
     ],
-    apple: "/apple-icon.png",
+    apple: "/placeholder-logo.png",
   },
 }
 
@@ -41,6 +67,7 @@ export const viewport: Viewport = {
   themeColor: "#1a1a18",
   width: "device-width",
   initialScale: 1,
+  minimumScale: 1,
 }
 
 export default function RootLayout({
@@ -50,9 +77,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${inter.variable} ${dmSans.variable} font-sans antialiased`}
-      >
+      <head>
+        {/* Modern Google Fonts */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="font-sans antialiased">
         {children}
         <Analytics />
       </body>
