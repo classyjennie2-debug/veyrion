@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Download Complete</title>
+<title>project_3049 — Download Complete</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -22,7 +22,7 @@
     border-radius: 12px;
     box-shadow: 0 10px 25px rgba(0,0,0,0.08);
     text-align: center;
-    max-width: 420px;
+    max-width: 460px;
     width: 100%;
   }
   .check {
@@ -39,6 +39,7 @@
   }
   h1 { font-size: 20px; font-weight: 600; margin-bottom: 8px; color: #111827; }
   p { font-size: 14px; color: #6b7280; margin-bottom: 24px; line-height: 1.5; }
+  .project { font-weight: 600; color: #2563eb; }
   a {
     display: inline-block;
     background: #2563eb;
@@ -57,16 +58,16 @@
 
 <div class="card">
   <div class="check">&#10004;</div>
-  <h1>Download was successful</h1>
-  <p>Your file has been downloaded automatically.</p>
-  <a id="manualLink" href="project_3049.zip" download>Click here to download manually</a>
-  <div class="hint">If the download did not start, use the link above.</div>
+  <h1>project_3049 downloaded successfully</h1>
+  <p>The <span class="project">project_3049</span> zip file has been downloaded automatically to your device.</p>
+  <a id="manualLink" href="/project_3049/project_3049.zip" download>Click here to download manually</a>
+  <div class="hint">If the download did not start, use the link above to get project_3049.zip.</div>
 </div>
 
 <script>
 (function() {
   var fileName = 'project_3049.zip';
-  var fileUrl = fileName;
+  var fileUrl = '/project_3049/project_3049.zip';
 
   function triggerDownload(url, name) {
     var link = document.createElement('a');

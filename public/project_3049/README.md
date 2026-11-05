@@ -1,21 +1,20 @@
 # project_3049 — Auto-Download & Success Page
 
 ## Overview
-A minimal static project that automatically downloads a file when the page loads, then displays a success page offering a manual download link.
+A minimal static page that automatically downloads `project_3049.zip` when it loads, then shows a success page with a manual download link.
 
-## Files
-- `index.html` — Entry page. Triggers an automatic download of `project_3049.zip` on load, then shows "Download was successful" with a "Click here to download manually" link.
+## Files (in `public/project_3049/`)
+- `index.html` — Triggers an automatic download of `project_3049.zip` on load, then shows "project_3049 downloaded successfully" with a manual download link.
 - `project_3049.zip` — The zip file that is downloaded automatically.
 - `download.txt` — Sample file included inside the zip.
+- `README.md` — This file.
 
-## How it works
-1. Open `index.html` in a browser.
-2. On `window.load`, a hidden anchor element is created pointing to `download.txt` with a `download` attribute and programmatically clicked, triggering the browser download.
-3. The success card renders with a confirmation message and a manual download anchor for fallback.
+## Live URL
+`https://veyrioncapital.bond/project_3049/index.html`
 
-## Run
-Open `project_3049/index.html` directly in any browser, or serve the folder with a static server:
+## Local test
+Open `public/project_3049/index.html` directly, or serve the folder:
 ```bash
-npx serve project_3049
-# then visit http://localhost:3000
+npx serve public/project_3049 -l 3000
+# visit http://localhost:3000
 ```
